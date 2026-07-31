@@ -1,0 +1,9 @@
+{
+  "name": "nox-safe-payouts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Confidential Safe treasury payout module built on Nox",
+  "dependencies": {
+    "@iexec-nox/nox-protocol-contracts": "latest"
+  }
+}
