@@ -78,3 +78,33 @@ forge install foundry-rs/forge-std
 forge build
 forge test -vvv
 ```
+
+## How judges can test this live
+
+Deployed on **Ethereum Sepolia**:
+- Module: `0x9B83Efc08bECB7b73b5A892aaeEE68956Ce84746`
+- Demo Safe (1-of-1): `0x6b2895225Ccc174FFda8c8346E602698C7e43c66`
+
+There's no frontend — this is an infrastructure-level Safe module, tested the
+way any Safe module is: through Safe's own UI, or directly on Etherscan if
+verified.
+
+**Option A — Etherscan (if verified):**
+Go to the module address above on sepolia.etherscan.io, use the
+"Read/Write Contract" tabs directly.
+
+**Option B — Safe UI (same flow used to build this):**
+1. Go to app.safe.global, open the Safe address above (or connect your own
+   Safe and enable this module via Settings > Modules > paste the module
+   address)
+2. Clone this repo, `npm install`, then generate an encrypted amount:
+   `MODULE_ADDRESS=0x9B83... SAFE_ADDRESS=<your Safe> node scripts/encrypt.js 500`
+3. In Safe's Transaction Builder app, call `fund(bytes32,bytes)` or
+   `requestPayout(address,bytes32,bytes)` on the module with the printed
+   handle/proof
+4. Decrypt any balance you're authorized to see:
+   `MODULE_ADDRESS=0x9B83... node scripts/decrypt.js <address>`
+
+**What to look for:** the on-chain transaction data and event logs never
+show a plaintext amount — only an authorized decrypt (Option B step 4)
+reveals the real number.
