@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nox Confidential Treasury</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #05070d; color: #E8ECF1; font-family: 'Inter', sans-serif;
+    min-height: 100vh; padding: 32px 20px 80px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  header img { width: 44px; height: 44px; border-radius: 10px; }
+  h1 { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; }
+  .tagline { color: #94A3B8; font-size: 14px; margin: 6px 0 28px; line-height: 1.6; }
+  .notice {
+    background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #94A3B8;
+    line-height: 1.6; margin-bottom: 28px;
+  }
+  .notice b { color: #38BDF8; }
+  .card {
+    background: #0F172A; border: 1px solid rgba(148,163,184,0.15);
+    border-radius: 14px; padding: 22px; margin-bottom: 20px;
+  }
+  .card h2 { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .card .sub { color: #64748B; font-size: 13px; margin-bottom: 18px; }
+  label { display: block; font-size: 12px; color: #94A3B8; margin-bottom: 6px; margin-top: 14px; font-family: 'IBM Plex Mono', monospace; }
+  label:first-of-type { margin-top: 0; }
+  input {
+    width: 100%; background: #0A0E17; border: 1px solid rgba(148,163,184,0.2);
+    border-radius: 8px; padding: 10px 12px; color: #E8ECF1; font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; outline: none;
+  }
+  input:focus { border-color: #38BDF8; }
+  button {
+    margin-top: 18px; width: 100%; background: #38BDF8; color: #05070d; border: none;
+    border-radius: 8px; padding: 12px; font-family: 'Inter', sans-serif; font-weight: 600;
+    font-size: 14px; cursor: pointer;
+  }
+  button:hover { background: #2DD4BF; }
+  button:disabled { background: #1E293B; color: #64748B; cursor: not-allowed; }
+  .connect-btn { background: transparent; border: 1px solid #38BDF8; color: #38BDF8; margin-bottom: 24px; width: auto; padding: 8px 16px; font-size: 13px; }
+  .out {
+    margin-top: 16px; background: #0A0E17; border: 1px solid rgba(148,163,184,0.15);
+    border-radius: 8px; padding: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    color: #2DD4BF; word-break: break-all; white-space: pre-wrap; display: none;
+  }
+  .out.show { display: block; }
+  .out .label { color: #64748B; display: block; margin-bottom: 3px; }
+  .out .val { display: block; margin-bottom: 10px; }
+  .status { font-size: 12px; color: #64748B; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; }
+  .status.err { color: #F87171; }
+  .status.ok { color: #2DD4BF; }
+  a { color: #38BDF8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="nox-logo.png" alt="">
+    <h1>Nox Confidential Treasury</h1>
+  </header>
+  <p class="tagline">Client-side encryption and decryption for a confidential Safe treasury module. Amounts never leave your device unencrypted.</p>
+
+  <div class="notice">
+    <b>How execution works:</b> this page only handles encryption and decryption
+    — the actual on-chain transaction (calling <code>fund()</code> or
+    <code>requestPayout()</code>) is executed through your Safe's own interface
+    at <a href="https://app.safe.global" target="_blank">app.safe.global</a>,
+    using the encrypted values generated here. This keeps multisig execution
+    on Safe's audited infrastructure rather than reimplementing it.
+  </div>
+
+  <button class="connect-btn" id="connectBtn">Connect Wallet</button>
+
+  <div class="card">
+    <h2>Encrypt a payout</h2>
+    <div class="sub">Generates the handle + proof to paste into Safe's Transaction Builder for fund() or requestPayout()</div>
+    <label>Module address</label>
+    <input id="moduleAddr" placeholder="0x...">
+    <label>Safe address (the proof is bound to this)</label>
+    <input id="safeAddr" placeholder="0x...">
+    <label>Amount</label>
+    <input id="amount" placeholder="e.g. 300" inputmode="numeric">
+    <button id="encryptBtn">Encrypt</button>
+    <div class="status" id="encryptStatus"></div>
+    <div class="out" id="encryptOut">
+      <span class="label">handle</span><span class="val" id="outHandle"></span>
+      <span class="label">proof</span><span class="val" id="outProof"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Decrypt a balance</h2>
+    <div class="sub">Only works if your connected wallet has been granted viewer access to that account's balance handle</div>
+    <label>Module address</label>
+    <input id="moduleAddr2" placeholder="0x...">
+    <label>Account to check</label>
+    <input id="checkAddr" placeholder="0x...">
+    <button id="decryptBtn">Decrypt</button>
+    <div class="status" id="decryptStatus"></div>
+    <div class="out" id="decryptOut">
+      <span class="label">decrypted value</span><span class="val" id="outValue"></span>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { ethers } from "https://esm.sh/ethers@6.13.0";
+  import { createEthersHandleClient } from "https://esm.sh/@iexec-nox/handle";
+
+  let provider, signer, handleClient;
+
+  const connectBtn = document.getElementById('connectBtn');
+  connectBtn.onclick = async () => {
+    if (!window.ethereum) {
+      connectBtn.textContent = "No wallet found";
+      return;
+    }
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    handleClient = await createEthersHandleClient(signer);
+    const addr = await signer.getAddress();
+    connectBtn.textContent = addr.slice(0,6) + "..." + addr.slice(-4);
+  };
+
+  document.getElementById('encryptBtn').onclick = async () => {
+    const statusEl = document.getElementById('encryptStatus');
+    const outEl = document.getElementById('encryptOut');
+    outEl.classList.remove('show');
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+
+    if (!handleClient) { statusEl.textContent = 'Connect your wallet first.'; statusEl.className = 'status err'; return; }
+
+    const moduleAddr = document.getElementById('moduleAddr').value.trim();
+    const safeAddr = document.getElementById('safeAddr').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+
+    if (!moduleAddr || !safeAddr || !amount) {
+      statusEl.textContent = 'Fill in all fields.'; statusEl.className = 'status err'; return;
+    }
+
+    try {
+      statusEl.textContent = 'Encrypting...';
+      // Bind the proof to the Safe's address, not this wallet's — the Safe
+      // is the actual on-chain caller of fund()/requestPayout().
+      handleClient.blockchainService.getAddress = async () => safeAddr;
+
+      const { handle, handleProof } = await handleClient.encryptInput(
+        BigInt(amount), "uint256", moduleAddr
+      );
+
+      document.getElementById('outHandle').textContent = handle;
+      document.getElementById('outProof').textContent = handleProof;
+      outEl.classList.add('show');
+      statusEl.textContent = 'Done — paste these into Safe\'s Transaction Builder.';
+      statusEl.className = 'status ok';
+    } catch (err) {
+      statusEl.textContent = 'Error: ' + (err?.message || err);
+      statusEl.className = 'status err';
+    }
+  };
+
+  document.getElementById('decryptBtn').onclick = async () => {
+    const statusEl = document.getElementById('decryptStatus');
+    const outEl = document.getElementById('decryptOut');
+    outEl.classList.remove('show');
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+
+    if (!handleClient) { statusEl.textContent = 'Connect your wallet first.'; statusEl.className = 'status err'; return; }
+
+    const moduleAddr = document.getElementById('moduleAddr2').value.trim();
+    const checkAddr = document.getElementById('checkAddr').value.trim();
+
+    if (!moduleAddr || !checkAddr) {
+      statusEl.textContent = 'Fill in all fields.'; statusEl.className = 'status err'; return;
+    }
+
+    try {
+      statusEl.textContent = 'Reading balance handle...';
+      const abi = ["function balanceOf(address account) external view returns (bytes32)"];
+      const module = new ethers.Contract(moduleAddr, abi, provider);
+      const balanceHandle = await module.balanceOf(checkAddr);
+
+      statusEl.textContent = 'Decrypting...';
+      const decrypted = await handleClient.decrypt(balanceHandle);
+      const value = (decrypted && typeof decrypted === 'object' && 'value' in decrypted) ? decrypted.value : decrypted;
+
+      document.getElementById('outValue').textContent = String(value);
+      outEl.classList.add('show');
+      statusEl.textContent = 'Done.';
+      statusEl.className = 'status ok';
+    } catch (err) {
+      statusEl.textContent = 'Error: ' + (err?.message || err);
+      statusEl.className = 'status err';
+    }
+  };
+</script>
+</body>
+</html>
