@@ -80,31 +80,41 @@
     <span id="loadErrorMsg"></span>
   </div>
 
+  <div class="notice" style="margin-bottom: 14px;">
+    <b>Step 1 — Connect a wallet.</b> This page needs a signer to talk to
+    the Nox encryption service and to prove who you are when decrypting.
+    Open this page from inside a wallet app's built-in browser (e.g.
+    MetaMask, Rabby) if your regular browser doesn't have one — if the
+    button hangs, your wallet may be waiting for you to approve a
+    connection request, sometimes in a separate tab/notification.
+  </div>
+
   <button class="connect-btn" id="connectBtn">Connect Wallet</button>
+  <div class="status" id="connectStatus" style="margin-bottom:20px;"></div>
 
   <div class="card">
-    <h2>Encrypt a payout</h2>
-    <div class="sub">Generates the handle + proof to paste into Safe's Transaction Builder for fund() or requestPayout()</div>
-    <label>Module address</label>
+    <h2>Step 2 — Encrypt a payout amount</h2>
+    <div class="sub">This runs entirely in your browser. The amount is encrypted before it ever leaves your device — this page and the module contract never see it in plaintext. The result (a "handle" and "proof") is what actually gets submitted on-chain later, via Safe.</div>
+    <label>Module address — the deployed NoxPayoutModule contract this encryption is for (pre-filled with the live demo deployment)</label>
     <input id="moduleAddr" placeholder="0x..." value="0x9B83Efc08bECB7b73b5A892aaeEE68956Ce84746">
-    <label>Safe address (the proof is bound to this)</label>
+    <label>Safe address — the multisig wallet that will actually execute the transaction (pre-filled with the demo Safe)</label>
     <input id="safeAddr" placeholder="0x..." value="0x6b2895225Ccc174FFda8c8346E602698C7e43c66">
-    <label>Amount</label>
+    <label>Amount to encrypt (a plain number — this is what stays private)</label>
     <input id="amount" placeholder="e.g. 300" inputmode="numeric">
     <button id="encryptBtn">Encrypt</button>
     <div class="status" id="encryptStatus"></div>
     <div class="out" id="encryptOut">
-      <span class="label">handle</span><span class="val" id="outHandle"></span>
-      <span class="label">proof</span><span class="val" id="outProof"></span>
+      <span class="label">handle — copy this into Safe's Transaction Builder</span><span class="val" id="outHandle"></span>
+      <span class="label">proof — copy this into Safe's Transaction Builder</span><span class="val" id="outProof"></span>
     </div>
   </div>
 
   <div class="card">
-    <h2>Decrypt a balance</h2>
-    <div class="sub">Only works if your connected wallet has been granted viewer access to that account's balance handle</div>
-    <label>Module address</label>
+    <h2>Step 3 — Decrypt a balance (optional, for verification)</h2>
+    <div class="sub">After a payout executes on Safe, use this to prove the confidential amount actually landed correctly. Only works if your connected wallet is the account being checked, or was explicitly granted viewer access by the contract.</div>
+    <label>Module address (pre-filled with the live demo deployment)</label>
     <input id="moduleAddr2" placeholder="0x..." value="0x9B83Efc08bECB7b73b5A892aaeEE68956Ce84746">
-    <label>Account to check</label>
+    <label>Which account's balance to check</label>
     <input id="checkAddr" placeholder="0x...">
     <button id="decryptBtn">Decrypt</button>
     <div class="status" id="decryptStatus"></div>
@@ -141,21 +151,40 @@
   })();
 
   connectBtn.onclick = async () => {
+    const statusEl = document.getElementById('connectStatus');
+    statusEl.className = 'status';
+
     if (!window.ethereum) {
       connectBtn.textContent = "No wallet found";
+      statusEl.textContent = "No wallet extension/app detected in this browser. Try opening this page inside a wallet app's built-in browser.";
+      statusEl.className = 'status err';
       return;
     }
+
+    connectBtn.textContent = "Connecting...";
+    statusEl.textContent = "Requesting account access — check for a wallet approval prompt (it may open in a new tab or notification).";
+
+    const timeout = setTimeout(() => {
+      statusEl.textContent = "Still waiting after 10s. Open your wallet app directly — there may be a pending approval request there.";
+      statusEl.className = 'status err';
+    }, 10000);
+
     try {
       provider = new ethers.BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
+      clearTimeout(timeout);
+      statusEl.textContent = "Connected. Getting signer...";
       signer = await provider.getSigner();
       handleClient = await createEthersHandleClient(signer);
       const addr = await signer.getAddress();
       connectBtn.textContent = addr.slice(0,6) + "..." + addr.slice(-4);
+      statusEl.textContent = "Ready — you can now encrypt or decrypt below.";
+      statusEl.className = 'status ok';
     } catch (err) {
-      connectBtn.textContent = "Connect failed";
-      loadErrorEl.style.display = 'block';
-      loadErrorMsgEl.textContent = (err && err.message) ? err.message : String(err);
+      clearTimeout(timeout);
+      connectBtn.textContent = "Connect failed — tap to retry";
+      statusEl.textContent = (err && err.message) ? err.message : String(err);
+      statusEl.className = 'status err';
     }
   };
 
