@@ -122,7 +122,7 @@
 
   <div class="card">
     <h2>Step 3 — Decrypt a balance (optional, for verification)</h2>
-    <div class="sub">After a payout executes on Safe, use this to prove the confidential amount actually landed correctly. Only works if your connected wallet is the account being checked, or was explicitly granted viewer access by the contract. If you need to check a different account than the one connected above, tap below to switch wallets first — no private keys are ever typed into this page.</div>
+    <div class="sub">This step is for the <b style="color:#E8ECF1;">payout recipient</b> — the person who received funds — to prove they got the right amount. Connect the recipient's wallet here (not the Safe owner's wallet from Step 1) to decrypt their balance. If you need to check a different account than whichever wallet is connected below, tap the button to switch first — no private keys are ever typed into this page.</div>
     <button class="connect-btn" id="connectBtn2" style="margin-bottom:16px;">Connect / Switch Wallet</button>
     <label>Module address (pre-filled with the live demo deployment)</label>
     <input id="moduleAddr2" placeholder="0x..." value="0x9B83Efc08bECB7b73b5A892aaeEE68956Ce84746">
@@ -263,6 +263,8 @@
       setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
     });
   });
+
+  document.getElementById('encryptBtn').onclick = async () => {
     const statusEl = document.getElementById('encryptStatus');
     const outEl = document.getElementById('encryptOut');
     outEl.classList.remove('show');
