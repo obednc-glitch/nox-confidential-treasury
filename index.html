@@ -12,10 +12,10 @@
     min-height: 100vh; padding: 32px 20px 80px;
   }
   .wrap { max-width: 640px; margin: 0 auto; }
-  header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
-  header img { width: 44px; height: 44px; border-radius: 10px; }
+  header { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 8px; text-align: center; }
+  header img { width: 72px; height: 72px; border-radius: 16px; }
   h1 { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; }
-  .tagline { color: #94A3B8; font-size: 14px; margin: 6px 0 28px; line-height: 1.6; }
+  .tagline { color: #94A3B8; font-size: 14px; margin: 6px 0 28px; line-height: 1.6; text-align: center; }
   .notice {
     background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25);
     border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #94A3B8;
@@ -52,6 +52,15 @@
   .out.show { display: block; }
   .out .label { color: #64748B; display: block; margin-bottom: 3px; }
   .out .val { display: block; margin-bottom: 10px; }
+  .copy-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .copy-row .val { margin-bottom: 0; flex: 1; }
+  .copy-btn {
+    margin-top: 0; width: auto; flex-shrink: 0; background: #1E293B; color: #94A3B8;
+    border: 1px solid rgba(148,163,184,0.25); padding: 6px 10px; font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500;
+  }
+  .copy-btn:hover { background: #334155; color: #E8ECF1; }
+  .copy-btn.copied { background: rgba(45,212,191,0.15); color: #2DD4BF; border-color: rgba(45,212,191,0.4); }
   .status { font-size: 12px; color: #64748B; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; }
   .status.err { color: #F87171; }
   .status.ok { color: #2DD4BF; }
@@ -104,14 +113,17 @@
     <button id="encryptBtn">Encrypt</button>
     <div class="status" id="encryptStatus"></div>
     <div class="out" id="encryptOut">
-      <span class="label">handle — copy this into Safe's Transaction Builder</span><span class="val" id="outHandle"></span>
-      <span class="label">proof — copy this into Safe's Transaction Builder</span><span class="val" id="outProof"></span>
+      <span class="label">handle — copy this into Safe's Transaction Builder</span>
+      <div class="copy-row"><span class="val" id="outHandle"></span><button class="copy-btn" data-copy-target="outHandle">Copy</button></div>
+      <span class="label">proof — copy this into Safe's Transaction Builder</span>
+      <div class="copy-row"><span class="val" id="outProof"></span><button class="copy-btn" data-copy-target="outProof">Copy</button></div>
     </div>
   </div>
 
   <div class="card">
     <h2>Step 3 — Decrypt a balance (optional, for verification)</h2>
-    <div class="sub">After a payout executes on Safe, use this to prove the confidential amount actually landed correctly. Only works if your connected wallet is the account being checked, or was explicitly granted viewer access by the contract.</div>
+    <div class="sub">After a payout executes on Safe, use this to prove the confidential amount actually landed correctly. Only works if your connected wallet is the account being checked, or was explicitly granted viewer access by the contract. If you need to check a different account than the one connected above, tap below to switch wallets first — no private keys are ever typed into this page.</div>
+    <button class="connect-btn" id="connectBtn2" style="margin-bottom:16px;">Connect / Switch Wallet</button>
     <label>Module address (pre-filled with the live demo deployment)</label>
     <input id="moduleAddr2" placeholder="0x..." value="0x9B83Efc08bECB7b73b5A892aaeEE68956Ce84746">
     <label>Which account's balance to check</label>
@@ -119,7 +131,7 @@
     <button id="decryptBtn">Decrypt</button>
     <div class="status" id="decryptStatus"></div>
     <div class="out" id="decryptOut">
-      <span class="label">decrypted value</span><span class="val" id="outValue"></span>
+      <div class="copy-row"><span class="val" id="outValue"></span><button class="copy-btn" data-copy-target="outValue">Copy</button></div>
     </div>
   </div>
 </div>
@@ -127,13 +139,16 @@
 <script type="module">
   let ethers, createEthersHandleClient;
   let provider, signer, handleClient;
+  let provider2, signer2, handleClient2;
 
   const connectBtn = document.getElementById('connectBtn');
+  const connectBtn2 = document.getElementById('connectBtn2');
   const loadErrorEl = document.getElementById('loadError');
   const loadErrorMsgEl = document.getElementById('loadErrorMsg');
 
   connectBtn.disabled = true;
   connectBtn.textContent = "Loading...";
+  connectBtn2.disabled = true;
 
   (async () => {
     try {
@@ -143,6 +158,7 @@
       createEthersHandleClient = handleMod.createEthersHandleClient;
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect Wallet";
+      connectBtn2.disabled = false;
     } catch (err) {
       loadErrorEl.style.display = 'block';
       loadErrorMsgEl.textContent = (err && err.message) ? err.message : String(err);
@@ -188,7 +204,65 @@
     }
   };
 
-  document.getElementById('encryptBtn').onclick = async () => {
+  connectBtn2.onclick = async () => {
+    const statusEl = document.getElementById('decryptStatus');
+    statusEl.className = 'status';
+
+    if (!window.ethereum) {
+      connectBtn2.textContent = "No wallet found";
+      statusEl.textContent = "No wallet extension/app detected in this browser.";
+      statusEl.className = 'status err';
+      return;
+    }
+
+    connectBtn2.textContent = "Connecting...";
+    statusEl.textContent = "Requesting account access — check for a wallet approval prompt.";
+
+    const timeout = setTimeout(() => {
+      statusEl.textContent = "Still waiting after 10s. Open your wallet app directly.";
+      statusEl.className = 'status err';
+    }, 10000);
+
+    try {
+      provider2 = new ethers.BrowserProvider(window.ethereum);
+      await provider2.send("eth_requestAccounts", []);
+      clearTimeout(timeout);
+      signer2 = await provider2.getSigner();
+      handleClient2 = await createEthersHandleClient(signer2);
+      const addr = await signer2.getAddress();
+      connectBtn2.textContent = addr.slice(0,6) + "..." + addr.slice(-4);
+      statusEl.textContent = "Ready to decrypt as " + addr.slice(0,6) + "...";
+      statusEl.className = 'status ok';
+    } catch (err) {
+      clearTimeout(timeout);
+      connectBtn2.textContent = "Connect failed — tap to retry";
+      statusEl.textContent = (err && err.message) ? err.message : String(err);
+      statusEl.className = 'status err';
+    }
+  };
+
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const targetEl = document.getElementById(btn.getAttribute('data-copy-target'));
+      const text = targetEl ? targetEl.textContent : '';
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        // Fallback for browsers without clipboard API access
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      const original = btn.textContent;
+      btn.textContent = "Copied!";
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+    });
+  });
     const statusEl = document.getElementById('encryptStatus');
     const outEl = document.getElementById('encryptOut');
     outEl.classList.remove('show');
@@ -233,7 +307,7 @@
     statusEl.className = 'status';
     statusEl.textContent = '';
 
-    if (!handleClient) { statusEl.textContent = 'Connect your wallet first.'; statusEl.className = 'status err'; return; }
+    if (!handleClient2) { statusEl.textContent = 'Connect a wallet above first.'; statusEl.className = 'status err'; return; }
 
     const moduleAddr = document.getElementById('moduleAddr2').value.trim();
     const checkAddr = document.getElementById('checkAddr').value.trim();
@@ -245,11 +319,11 @@
     try {
       statusEl.textContent = 'Reading balance handle...';
       const abi = ["function balanceOf(address account) external view returns (bytes32)"];
-      const module = new ethers.Contract(moduleAddr, abi, provider);
+      const module = new ethers.Contract(moduleAddr, abi, provider2);
       const balanceHandle = await module.balanceOf(checkAddr);
 
       statusEl.textContent = 'Decrypting...';
-      const decrypted = await handleClient.decrypt(balanceHandle);
+      const decrypted = await handleClient2.decrypt(balanceHandle);
       const value = (decrypted && typeof decrypted === 'object' && 'value' in decrypted) ? decrypted.value : decrypted;
 
       document.getElementById('outValue').textContent = String(value);
