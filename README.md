@@ -1,11 +1,23 @@
-# Nox Confidential Safe Treasury Module
+# Nox Confidential Safe Treasury Ledger
 
-A Gnosis Safe module implementing a confidential treasury ledger: the Safe
-deposits into an encrypted internal balance, and payouts move an encrypted
-amount to a recipient's encrypted balance via Nox's `transfer` primitive.
-The amount moved — and even whether a payout succeeded — stays encrypted
-on-chain; only accounts explicitly granted access can decrypt it off-chain
-via the Nox JS SDK.
+A Gnosis Safe module implementing a confidential **internal accounting
+ledger**: the Safe deposits into an encrypted balance it holds within this
+contract, and payouts move an encrypted amount from that balance to a
+recipient's encrypted balance via Nox's `transfer` primitive. The amount
+moved — and even whether a payout succeeded — stays encrypted on-chain;
+only accounts explicitly granted access can decrypt it off-chain via the
+Nox JS SDK.
+
+**Important scope note:** this module does **not** move real ETH or
+tokens. `fund()` and `requestPayout()` only update encrypted numbers in
+this contract's own storage (`_balances`) — there is no `payable`, no
+`.call{value:...}`, no ERC-20 transfer anywhere in the code. What's
+proven here is a genuine confidential accounting primitive (think:
+private payroll bookkeeping, or a settlement layer that nets out before
+a final real transfer) — not yet a complete payment rail. A real payout
+of funds would require adding a `withdraw()` path that moves actual
+assets out via `execTransactionFromModule` once a balance is decrypted;
+see "Also still open" below.
 
 ## Revision history (why this looks different from the first draft)
 
@@ -65,10 +77,15 @@ tests cover access control only. Before the demo, either:
   its own local test harness/mock for this.
 
 ## Also still open
-- [ ] Whether a withdraw path (recipient claims their confidential
-      balance out to real ETH via the Safe) is in scope for the demo -
-      not implemented yet; would need either a public-decryption step
-      (Nox.allowPublicDecryption) or an off-chain-proof claim flow.
+- [ ] **No real asset movement yet.** `fund()`/`requestPayout()` only
+      update encrypted balances in this contract's own storage. Adding a
+      `withdraw()` function (recipient decrypts their balance, submits
+      proof, contract calls `execTransactionFromModule` to send real
+      ETH/tokens via the Safe) would close the loop into an actual
+      payment system. Not implemented — would need either a
+      public-decryption step (`Nox.allowPublicDecryption`) or an
+      off-chain-proof claim flow to let the contract verify the claimed
+      amount without just trusting the caller.
 - [ ] Confirm which chain/testnet the hackathon wants submissions on
 
 ## Getting this running in Termux
@@ -85,15 +102,18 @@ Deployed on **Ethereum Sepolia**:
 - Module: `0x9B83Efc08bECB7b73b5A892aaeEE68956Ce84746`
 - Demo Safe (1-of-1): `0x6b2895225Ccc174FFda8c8346E602698C7e43c66`
 
-There's no frontend — this is an infrastructure-level Safe module, tested the
-way any Safe module is: through Safe's own UI, or directly on Etherscan if
-verified.
+**Easiest — the hosted front-end:**
+https://obednc-glitch.github.io/nox-confidential-treasury/
+Connect a wallet, encrypt an amount client-side, copy the handle/proof
+into Safe's Transaction Builder to call `fund`/`requestPayout`, then
+connect as the recipient in Step 3 to decrypt and confirm the exact
+amount landed in their ledger entry.
 
 **Option A — Etherscan (if verified):**
 Go to the module address above on sepolia.etherscan.io, use the
 "Read/Write Contract" tabs directly.
 
-**Option B — Safe UI (same flow used to build this):**
+**Option B — Safe UI + scripts directly:**
 1. Go to app.safe.global, open the Safe address above (or connect your own
    Safe and enable this module via Settings > Modules > paste the module
    address)
@@ -106,5 +126,7 @@ Go to the module address above on sepolia.etherscan.io, use the
    `MODULE_ADDRESS=0x9B83... node scripts/decrypt.js <address>`
 
 **What to look for:** the on-chain transaction data and event logs never
-show a plaintext amount — only an authorized decrypt (Option B step 4)
-reveals the real number.
+show a plaintext amount — only an authorized decrypt (step 4 above)
+reveals the real number. Note this confirms the *encrypted ledger entry*
+updated correctly — it does not move real Sepolia ETH (see scope note
+at the top of this README).
