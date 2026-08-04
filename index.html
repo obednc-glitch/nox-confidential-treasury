@@ -126,8 +126,11 @@
       <div class="copy-row"><span class="val" id="outHandle"></span><button class="copy-btn" data-copy-target="outHandle">Copy</button></div>
       <span class="label">proof — copy this into Safe's Transaction Builder</span>
       <div class="copy-row"><span class="val" id="outProof"></span><button class="copy-btn" data-copy-target="outProof">Copy</button></div>
+      <span class="label">Module ABI — paste this into Transaction Builder's "Enter ABI" field (the contract isn't verified on Etherscan, so this won't auto-populate there)</span>
+      <div class="copy-row"><span class="val" id="outAbi" style="max-height:120px; overflow-y:auto; display:block;">[{"type":"constructor","stateMutability":"nonpayable","inputs":[{"name":"_safe","type":"address","internalType":"address"}]},{"type":"function","name":"safe","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract ISafe"}]},{"type":"function","name":"fund","stateMutability":"nonpayable","inputs":[{"name":"encryptedAmount","type":"bytes32","internalType":"externalEuint256"},{"name":"proof","type":"bytes","internalType":"bytes"}],"outputs":[]},{"type":"function","name":"requestPayout","stateMutability":"nonpayable","inputs":[{"name":"recipient","type":"address","internalType":"address"},{"name":"encryptedAmount","type":"bytes32","internalType":"externalEuint256"},{"name":"proof","type":"bytes","internalType":"bytes"}],"outputs":[]},{"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"account","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes32","internalType":"euint256"}]},{"type":"event","name":"ConfidentialDeposit","inputs":[{"name":"account","type":"address","indexed":true}],"anonymous":false},{"type":"event","name":"ConfidentialPayout","inputs":[{"name":"from","type":"address","indexed":true},{"name":"to","type":"address","indexed":true}],"anonymous":false},{"type":"error","name":"NotSafeOwnerFlow","inputs":[]}]</span><button class="copy-btn" data-copy-target="outAbi" style="align-self:flex-start;">Copy</button></div>
     </div>
   </div>
+
 
   <div class="card">
     <h2>Step 3 — Decrypt a balance (optional, for verification)</h2>
